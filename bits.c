@@ -19,7 +19,7 @@
  * Difficulty: 1
  */
 int bitAnd(int x, int y) {
-    return 2;
+    return ~(~x|~y);
 }
 
 /*
@@ -30,7 +30,7 @@ int bitAnd(int x, int y) {
  *   Difficulty: 1
  */
 int bitXor(int x, int y) {
-    return 2;
+    return ~((~(~x&y))&(~(~y&x)));
 }
 
 /*
@@ -50,7 +50,11 @@ int bitXor(int x, int y) {
  *   1 if x and y have the same sign , 0 otherwise.
  */
 int samesign(int x, int y) {
-    return 2;
+    if(x==0&&y==0) return 1;
+    if(x==0||y==0) return 0;
+    x>>=31;
+    y>>=31;
+    return !(x^y);
 }
 
 /*
@@ -63,7 +67,12 @@ int samesign(int x, int y) {
  *   Difficulty: 4
  */
 int logtwo(int v) {
-    return 2;
+    int result=((v>>16)>0)<<4;
+    result|=((v>>(result|8))>0)<<3;
+    result|=((v>>(result|4))>0)<<2;
+    result|=((v>>(result|2))>0)<<1;
+    result|=((v>>(result|1))>0);
+    return result;
 }
 
 /*
@@ -76,7 +85,14 @@ int logtwo(int v) {
  *    Difficulty: 2
  */
 int byteSwap(int x, int n, int m) {
-    return 2;
+    int s1=n<<3;
+    int s2=m<<3;
+    int mask1=0xFF<<s1;
+    int mask2=0xFF<<s2;
+    int byte_n=x>>s1&0xFF;
+    int byte_m=x>>s2&0xFF;
+    x=(byte_n<<s2)|(byte_m<<s1)|((x&~(mask1|mask2)));
+    return x;
 }
 
 /*
@@ -88,7 +104,16 @@ int byteSwap(int x, int n, int m) {
  *   Difficulty: 3
  */
 unsigned reverse(unsigned v) {
-    return 2;
+    unsigned i = 0;
+    unsigned u = 0;
+    while(i<32)
+    {
+        u<<=1;
+        u+=v&1;
+        v>>=1;
+        i++;
+    }
+    return u;
 }
 
 /*
@@ -100,7 +125,10 @@ unsigned reverse(unsigned v) {
  *   Difficulty: 3
  */
 int logicalShift(int x, int n) {
-    return 2;
+    x=x>>n;
+    int mask=~(1<<31>>n<<1);
+    x&=mask;
+    return x;
 }
 
 /*
@@ -112,7 +140,20 @@ int logicalShift(int x, int n) {
  *   Difficulty: 4
  */
 int leftBitCount(int x) {
-    return 2;
+    x=~x;
+    x|=x>>1;
+    x|=x>>2;
+    x|=x>>4;
+    x|=x>>8;
+    x|=x>>16;
+    x=~x;
+    int mask = 0x11111111;
+    int s=x&mask;
+    s+=(x>>1)&mask;
+    s+=(x>>2)&mask;
+    s+=(x>>3)&mask;
+    s+=(s>>16);
+    return (s&0xF)+(s>>4&0xF)+(s>>8&0xF)+(s>>12&0xF);
 }
 
 /*
@@ -124,7 +165,30 @@ int leftBitCount(int x) {
  *   Difficulty: 4
  */
 unsigned float_i2f(int x) {
-    return 2;
+    if(x==0) return 0;
+    if(x==0x80000000) return 0xCF000000;
+    unsigned sign=(x>>31)&1;
+    unsigned exp=0;
+    unsigned frac=0;
+    if(sign==1) x=~x+1;
+    for(int i=31;i>=0;i--)
+    {
+        if(x>>i>0)
+        {
+            exp=i+127;
+            break;
+        }
+    }
+    if(exp-127<=23) frac=((x&(~(1u<<(exp-127))))<<(23-(exp-127)))&0x7FFFFF;
+    else
+    {
+        unsigned sticky=x&((1<<((exp-127)-24))-1);
+        frac=((x&(~(1u<<(exp-127))))>>((exp-127)-24))&0xFFFFFF;
+        if((frac&0x1)==1&&(sticky||((frac&0x2)>>1)==1)) frac++;
+        frac>>=1;
+        if(frac>0x007FFFFF){frac=0;exp+=1;}
+    }
+    return (sign<<31)|(exp<<23)|frac;
 }
 
 /*
@@ -139,7 +203,20 @@ unsigned float_i2f(int x) {
  *   Difficulty: 4
  */
 unsigned floatScale2(unsigned uf) {
-    return 2;
+    unsigned sign=(uf>>31)&1;
+    unsigned exp=(uf>>23)&0xFF;
+    unsigned frac=uf&0x7FFFFF;
+    if(exp==0xFF) return uf;
+    if(exp==0)
+    {
+        frac<<=1;
+        return (sign<<31)+frac;
+    }
+    else
+    {
+        exp+=1;
+        return (sign<<31)|(exp<<23)|frac;
+    }
 }
 
 /*
@@ -156,7 +233,23 @@ unsigned floatScale2(unsigned uf) {
  *   Difficulty: 3
  */
 int float64_f2i(unsigned uf1, unsigned uf2) {
-    return 2;
+    if(uf1==0&&uf2==0) return 0;
+    unsigned sign=(uf2>>31)&1;
+    int exp=(uf2>>20)&0x7FF;
+    unsigned frac;
+    if(exp==0x7FF) return 0x80000000;
+    if(exp!=0)
+    {
+        exp-=1023;
+        if(exp<0) return 0;
+        if(exp>30) return 0x80000000;
+        if(exp>20) frac=(((uf2<<12)|(uf1>>20))>>1|0x80000000)>>(31-exp);
+        else frac=(uf2<<11|0x80000000)>>(31-exp);
+        unsigned result=frac;
+        if(sign) result=~result+1;
+        return result;
+    }
+    else return 0;
 }
 
 /*
@@ -173,5 +266,8 @@ int float64_f2i(unsigned uf1, unsigned uf2) {
  *   Difficulty: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+    if(x>127) return 0x7F800000;
+    if(x<-149) return 0;
+    if(x>-127) return (x+127)<<23;
+    else return 1<<(x+149);
 }
