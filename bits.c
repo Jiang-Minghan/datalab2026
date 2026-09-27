@@ -30,7 +30,7 @@ int bitAnd(int x, int y) {
  *   Difficulty: 1
  */
 int bitXor(int x, int y) {
-    return ~((~(~x&y))&(~(~y&x)));
+    return ~(x & y) & ~(~x & ~y);
 }
 
 /*
@@ -50,8 +50,9 @@ int bitXor(int x, int y) {
  *   1 if x and y have the same sign , 0 otherwise.
  */
 int samesign(int x, int y) {
-    if(x==0&&y==0) return 1;
-    if(x==0||y==0) return 0;
+    if(!x&&!y) return 1;
+    if(!x) return 0;
+    if(!y) return 0;
     x>>=31;
     y>>=31;
     return !(x^y);
@@ -106,7 +107,7 @@ int byteSwap(int x, int n, int m) {
 unsigned reverse(unsigned v) {
     unsigned i = 0;
     unsigned u = 0;
-    while(i<32)
+    while(i!=32)
     {
         u<<=1;
         u+=v&1;
@@ -165,30 +166,21 @@ int leftBitCount(int x) {
  *   Difficulty: 4
  */
 unsigned float_i2f(int x) {
-    if(x==0) return 0;
-    if(x==0x80000000) return 0xCF000000;
-    unsigned sign=(x>>31)&1;
-    unsigned exp=0;
-    unsigned frac=0;
-    if(sign==1) x=~x+1;
-    for(int i=31;i>=0;i--)
+    if (x == 0) return 0;
+    unsigned sign, ux, frac;
+    int exp = 158;
+    sign = x & 0x80000000u;
+    ux = x;
+    if (sign) ux = ~ux + 1;
+    while (!(ux & 0x80000000u))
     {
-        if(x>>i>0)
-        {
-            exp=i+127;
-            break;
-        }
+        ux <<= 1;
+        exp -= 1;
     }
-    if(exp-127<=23) frac=((x&(~(1u<<(exp-127))))<<(23-(exp-127)))&0x7FFFFF;
-    else
-    {
-        unsigned sticky=x&((1<<((exp-127)-24))-1);
-        frac=((x&(~(1u<<(exp-127))))>>((exp-127)-24))&0xFFFFFF;
-        if((frac&0x1)==1&&(sticky||((frac&0x2)>>1)==1)) frac++;
-        frac>>=1;
-        if(frac>0x007FFFFF){frac=0;exp+=1;}
-    }
-    return (sign<<31)|(exp<<23)|frac;
+    frac = (ux >> 8) & 0x7FFFFFu;
+    if ((ux & 0xFFu) > 0x80u) frac += 1;
+    if ((ux & 0x1FFu) == 0x180u) frac += 1;
+    return sign|(exp << 23)|frac;
 }
 
 /*
@@ -233,11 +225,11 @@ unsigned floatScale2(unsigned uf) {
  *   Difficulty: 3
  */
 int float64_f2i(unsigned uf1, unsigned uf2) {
-    if(uf1==0&&uf2==0) return 0;
+    if(!(uf1|uf2)) return 0;
     unsigned sign=(uf2>>31)&1;
     int exp=(uf2>>20)&0x7FF;
     unsigned frac;
-    if(exp==0x7FF) return 0x80000000;
+    if(!(exp!=0x7FF)) return 0x80000000;
     if(exp!=0)
     {
         exp-=1023;
